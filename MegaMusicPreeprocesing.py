@@ -74,36 +74,30 @@ def deskew_image(im, max_skew=10):
     return im
 
 
-def production(img):
-    # global thresholding
-    # _, th = cv2.threshold(img, 60, 255, cv2.THRESH_BINARY)
-    # adaptive thresholding
-    # th = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,20)
-    # Otsu's thresholding
-    # _, th = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # Otsu's thresholding after Gaussian filtering
+def thresholding(img, just_mask=True):
     blur = cv2.GaussianBlur(img, (3, 3), 0)
-    _, th = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    return th
-
-
-def for_photoshop_editing(img):
-    foreground = img
-    background = np.full(foreground.shape, np.amax(foreground))
-    blur = cv2.GaussianBlur(foreground, (3, 3), 0)
     _, mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    mask_inv = cv2.bitwise_not(mask)
-    img1_bg = cv2.bitwise_and(background, mask)
-    img2_fg = cv2.bitwise_and(foreground, mask_inv)
-
-    th = img1_bg + img2_fg
+    if just_mask:
+        return mask
+    th = img
+    th[mask > 0] = 255
     return th
 
 
 def align_image(img_name, img, align_mode):
-    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 13))
+
+    """
     # opened = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (9, 9))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_HITMISS, (9, 9))
+    kernel = np.array([1, 1, 1,1,1], np.uint8)
+    kernel1 = cv2.getStructuringElement(cv2.MORPH_CROSS, (9, 9))
+    # kernel = np.array([[0,1,0],[0, 1, 0],[0,1,0]], np.uint8)
+    dilated = cv2.morphologyEx(img, cv2.MORPH_BLACKHAT, kernel)
+
+    dilated = cv2.bitwise_not(dilated)
+    """
+
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
     dilated = cv2.morphologyEx(img, cv2.MORPH_DILATE, kernel)
     inversed = cv2.bitwise_not(dilated)
@@ -111,7 +105,7 @@ def align_image(img_name, img, align_mode):
     coords = np.column_stack(np.where(inversed > 0))
     min_val = np.min(coords, axis=0)
     max_val = np.max(coords, axis=0)
-    center = [int(x) for x in np.mean([min_val, max_val], axis=0).tolist()]
+    center = np.mean([min_val, max_val], axis=0).tolist()
 
     rows, cols = img.shape
     offset_x = int(cols / 2) - int(center[1]) if align_mode == 'x' or align_mode == 'full' else 0
@@ -120,8 +114,7 @@ def align_image(img_name, img, align_mode):
     M = np.float32([[1, 0, offset_x], [0, 1, offset_y]])
     dst = cv2.warpAffine(img, M, (cols, rows), borderMode=cv2.BORDER_CONSTANT, borderValue=255)
 
-    # cv2.imwrite(os.path.join('music_sheet_production', img_name + "-deskewed" + "." + 'bmp'), deskewed)
-    # cv2.imwrite(os.path.join('music_sheet_production', img_name + "-opening_test" + "." + 'bmp'), dilated)
+    cv2.imwrite(os.path.join('music_sheet_production', img_name + "-opening_test" + "." + 'bmp'), dilated)
     # cv2.imwrite(os.path.join('music_sheet_production', img_name + "-warp_test" + "." + 'bmp'), dst)
 
     return dst
@@ -145,11 +138,8 @@ def process_images(in_path, out_path, out_format='bmp', mode='production', edge_
         filenames = get_filenames(path=in_path)
     else:
         raise IOError("Path {} does not exist".format(in_path))
-    if mode == 'photoshop':
-        thresholding = for_photoshop_editing
-    elif mode == 'production':
-        thresholding = production
-    else:
+
+    if mode != 'photoshop' and mode != 'production':
         raise IOError('Mode can be either photoshop or production, not {}'.format(mode))
 
     if not os.path.exists(out_path):
@@ -160,7 +150,7 @@ def process_images(in_path, out_path, out_format='bmp', mode='production', edge_
         img = cv2.imread(os.path.join(in_path, img_name), 0)
         # img = cv2.fastNlMeansDenoising(img, h=3)
         img = edge_line_removal(image=img, edge_size=edge_size)
-        img = thresholding(img=img)
+        img = thresholding(img=img, just_mask=mode == 'production')
         if deskew:
             img = deskew_image(img, max_skew=max_skew)
         if align_mode is not 'none':
@@ -184,5 +174,5 @@ if __name__ == '__main__':
         # align_mode='none'
         # align_mode='x'
         # align_mode='y'
-        align_mode='none'
+        align_mode='full'
     )
