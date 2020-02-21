@@ -3,6 +3,11 @@ music_sheet_production/
 test/
 test.py
 .idea/
+venv
+*.jpeg
+*.jpg
+*.png
+*.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

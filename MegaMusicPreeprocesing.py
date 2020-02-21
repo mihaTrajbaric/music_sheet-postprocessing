@@ -3,7 +3,9 @@ import os
 from os import listdir
 from os.path import isfile, join
 import numpy as np
-
+import pdf2image
+# from fpdf import FPDF
+import img2pdf
 
 def get_filenames(path):
     filenames = [f for f in listdir(path) if isfile(join(path, f))]
@@ -114,18 +116,19 @@ def align_image(img_name, img, align_mode):
     M = np.float32([[1, 0, offset_x], [0, 1, offset_y]])
     dst = cv2.warpAffine(img, M, (cols, rows), borderMode=cv2.BORDER_CONSTANT, borderValue=255)
 
-    cv2.imwrite(os.path.join('music_sheet_production', img_name + "-opening_test" + "." + 'bmp'), dilated)
+    # cv2.imwrite(os.path.join('music_sheet_production', img_name + "-opening_test" + "." + 'bmp'), dilated)
     # cv2.imwrite(os.path.join('music_sheet_production', img_name + "-warp_test" + "." + 'bmp'), dst)
 
     return dst
 
 
-def process_images(in_path, out_path, out_format='bmp', mode='production', edge_size=50, deskew=False, max_skew=10,
+def process_images(in_path, out_path, in_format='jpeg', out_format='bmp', mode='production', edge_size=50, deskew=False, max_skew=10,
                    align_mode='none'):
     """
 
     :param in_path: path of input images
     :param out_path: path of output processed images
+    :param out_format: image format for input files (default jpeg, supported jpg, ... pdf)
     :param out_format: image format for output files (default bmp)
     :param mode: either for further photoshoping (photoshop) or for final processing (production)
     :param edge_size: size (in px) of border, that is removed
@@ -139,6 +142,16 @@ def process_images(in_path, out_path, out_format='bmp', mode='production', edge_
     else:
         raise IOError("Path {} does not exist".format(in_path))
 
+    if in_format == 'pdf':
+        jpeg_path = f'{in_path}-jpeg'
+        os.makedirs(jpeg_path, exist_ok=True)
+        for img_name in filenames:
+
+            pdf2image.convert_from_path(f'{in_path}/{img_name}', output_folder=jpeg_path, fmt='jpeg', output_file=img_name)
+        filenames = get_filenames(path=jpeg_path)
+    else:
+        jpeg_path = in_path
+
     if mode != 'photoshop' and mode != 'production':
         raise IOError('Mode can be either photoshop or production, not {}'.format(mode))
 
@@ -147,7 +160,7 @@ def process_images(in_path, out_path, out_format='bmp', mode='production', edge_
 
     for img_name in filenames:
         print(img_name)
-        img = cv2.imread(os.path.join(in_path, img_name), 0)
+        img = cv2.imread(os.path.join(jpeg_path, img_name), 0)
         # img = cv2.fastNlMeansDenoising(img, h=3)
         img = edge_line_removal(image=img, edge_size=edge_size)
         img = thresholding(img=img, just_mask=mode == 'production')
@@ -160,11 +173,19 @@ def process_images(in_path, out_path, out_format='bmp', mode='production', edge_
         name = remove_suffix(img_name)
         cv2.imwrite(os.path.join(out_path, name + "_" + mode + "_24bit" + "." + out_format), back_to_rgb)
 
+    if out_format == 'pdf':
+        imagelist = get_filenames(path=out_path)
+        with open("output.pdf", "wb") as f:
+            f.write(img2pdf.convert([open(f'{out_path}/{file}', 'rb') for file in imagelist]))
+        print('pdf is in file')
+
+
 
 if __name__ == '__main__':
     process_images(
-        in_path='music_sheet_scanned',
+        in_path='input',
         out_path='music_sheet_production',
+        in_format='pdf',
         out_format='bmp',
         # mode='production',
         mode='photoshop',
