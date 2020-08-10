@@ -1,17 +1,17 @@
 # Music sheet postprocessing
 Script for postprocessing scanned music sheet.
 
-# Features
+## Features
 - removing scanned artefacts on the edges
 - thresholding
 - deskewing
 
-# How to use
-## Basic usage
+## How to use
+### Basic usage
 In this mode, MegaMusicProcessing is intended to be used as a sole step in image postprocessing.
 To use this mode, set `mode='production'`. For other params, see [Parameters](#Parameters).
 
-## Advance mode
+### Advance mode
 In this mode, MegaMusicProcessing should be run in several steps:
 1) Run Script in 'photoshop' mode. This mode will perform masking but pixels, that will pass filtering, will retain its original colours. This will allow a user in step 2) to easily discriminate between dark black notes and greyer pencil marks.
 2) Open exported images, use photoshop to remove any remaining pencil marks and other unwanted artefacts.
@@ -19,7 +19,7 @@ In this mode, MegaMusicProcessing should be run in several steps:
 
 For other params, see [Parameters](#Parameters).
 
-## Parameters
+### Parameters
 - in_path: Path to directory with scanned images, relative to `MegaMusicProcessing.py` script.
 - out_path: Path where a script will output processed images, also relative to `MegaMusicProcessing.py` script.
 - out_format: Desired output format for processed images. Usually bmp or jpeg. See [OpenCV docs](https://docs.opencv.org/3.4/d4/da8/group__imgcodecs.html#gabbc7ef1aa2edfaa87772f1202d67e0ce) for more info.
@@ -30,7 +30,7 @@ For other params, see [Parameters](#Parameters).
 - align_mode: One of 'none', 'x', 'y', or 'full'. Chooses axis on which to preform aligning. `align_mode='full'` will preform aligning on both axis.
 
 
-## Example function call
+### Example function call
 ```Python
 from MegaMusicPreprocessing import process_images
 process_images(
